@@ -1,0 +1,28 @@
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-gradient: radial-gradient(1200px 800px at 20% -10%, #1a1145 0%, transparent 55%),
+    radial-gradient(1000px 700px at 90% 0%, #2a0e3a 0%, transparent 50%),
+    linear-gradient(160deg, #0a0e1a 0%, #0d1226 50%, #0a0e1a 100%);
+
+  --brand: #ff4d97;
+  --brand-2: #b14dff;
+  --brand-gradient: linear-gradient(120deg, #ff4d97 0%, #b14dff 100%);
+  --brand-glow: 0 0 0 1px rgba(255, 77, 151, 0.4), 0 8px 30px rgba(177, 77, 255, 0.25);
+
+  --card-bg: rgba(20, 25, 48, 0.6);
+  --card-bg-solid: rgba(18, 22, 42, 0.92);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-border-hover: rgba(255, 77, 151, 0.45);
+
+  --text-1: #f5f6ff;
+  --text-2: #aab0cc;
+  --text-3: #6b7299;
+  --danger: #ff5470;
+  --success: #3ddc97;
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+
+  --max-width: 1180px;
+}
