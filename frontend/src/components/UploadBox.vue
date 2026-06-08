@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="upload card">
     <div class="section-title">📤 上传产品图</div>
 
@@ -63,17 +63,23 @@ function handleFile(file) {
     return;
   }
   const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    emit('update', {
-      name: file.name,
-      url,
-      width: img.naturalWidth,
-      height: img.naturalHeight,
-      sizeText: formatSize(file.size),
-    });
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    const img = new Image();
+    img.onload = () => {
+      emit('update', {
+        name: file.name,
+        url,
+        dataUrl,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        sizeText: formatSize(file.size),
+      });
+    };
+    img.src = url;
   };
-  img.src = url;
+  reader.readAsDataURL(file);
 }
 
 function onPick(e) {

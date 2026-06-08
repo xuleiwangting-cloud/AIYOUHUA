@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="optimizer">
     <header class="page-head">
       <h1 class="page-title">点击率优化</h1>
@@ -83,6 +83,7 @@ import DirectionCards from '../components/DirectionCards.vue';
 import SchemeCard from '../components/SchemeCard.vue';
 import GenerateBar from '../components/GenerateBar.vue';
 import { mockDiagnose, mockSchemes, mockGenerate, appendHistory } from '../api/mock.js';
+import { aiDiagnose, aiSchemes } from '../api/ai.js';
 import { useSettingsStore } from '../stores/settings.js';
 
 const settings = useSettingsStore();
@@ -155,11 +156,21 @@ async function runDiagnose() {
     diagProgress.value = Math.min(diagProgress.value + 25, 95);
   }, 400);
   try {
-    const res = await mockDiagnose();
+    const selectedModel = settings.models.find((m) => m.id === model.value) || settings.currentVisionModel;
+    let res;
+    if (selectedModel && sourceImage.value?.dataUrl) {
+      res = await aiDiagnose(selectedModel, sourceImage.value.dataUrl);
+    } else {
+      if (!selectedModel) {
+        alert('\u672a\u914d\u7f6e\u89c6\u89c9\u6a21\u578b\uff0c\u5c06\u4f7f\u7528\u793a\u4f8b\u6570\u636e\u3002\u8bf7\u5728\u53f3\u4e0a\u89d2\u8bbe\u7f6e\u4e2d\u6dfb\u52a0\u652f\u6301\u89c6\u89c9\u8bca\u65ad\u7684\u6a21\u578b\u3002');
+      }
+      res = await mockDiagnose();
+    }
     diagnosis.value = res;
     direction.value = res.suggested_direction || '';
-  } catch {
-    alert('诊断失败，请重试');
+  } catch (e) {
+    const msg = e?.response?.data?.error || e?.message || '\u8bca\u65ad\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5';
+    alert(msg);
   } finally {
     clearInterval(timer);
     diagProgress.value = 100;
@@ -167,10 +178,22 @@ async function runDiagnose() {
   }
 }
 
+function activeVisionModel() {
+  return settings.models.find((m) => m.id === model.value) || settings.currentVisionModel;
+}
+
 async function generateSchemes() {
   schemeLoading.value = true;
   try {
-    schemes.value = await mockSchemes(direction.value, 8);
+    const m = activeVisionModel();
+    if (m && diagnosis.value) {
+      schemes.value = await aiSchemes(m, diagnosis.value, direction.value, 8);
+    } else {
+      schemes.value = await mockSchemes(direction.value, 8);
+    }
+  } catch (e) {
+    const msg = e?.response?.data?.error || e?.message || '\u65b9\u6848\u751f\u6210\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5';
+    alert(msg);
   } finally {
     schemeLoading.value = false;
   }
@@ -179,8 +202,14 @@ async function generateSchemes() {
 async function generateMore() {
   schemeLoading.value = true;
   try {
-    const more = await mockSchemes(direction.value, 4);
+    const m = activeVisionModel();
+    const more = m && diagnosis.value
+      ? await aiSchemes(m, diagnosis.value, direction.value, 4)
+      : await mockSchemes(direction.value, 4);
     schemes.value = [...schemes.value, ...more];
+  } catch (e) {
+    const msg = e?.response?.data?.error || e?.message || '\u65b9\u6848\u751f\u6210\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5';
+    alert(msg);
   } finally {
     schemeLoading.value = false;
   }
