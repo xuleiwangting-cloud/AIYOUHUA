@@ -83,7 +83,7 @@ import DirectionCards from '../components/DirectionCards.vue';
 import SchemeCard from '../components/SchemeCard.vue';
 import GenerateBar from '../components/GenerateBar.vue';
 import { mockDiagnose, mockSchemes, mockGenerate, appendHistory } from '../api/mock.js';
-import { aiDiagnose, aiSchemes } from '../api/ai.js';
+import { aiDiagnose, aiSchemes, aiGenerate } from '../api/ai.js';
 import { useSettingsStore } from '../stores/settings.js';
 
 const settings = useSettingsStore();
@@ -235,13 +235,22 @@ async function runGenerate(params) {
   generating.value = true;
   lastGenerated.value = [];
   try {
-    const images = await mockGenerate(selectedSchemes.value, params, (cur, total) => {
-      genProgressText.value = `正在生成第 ${cur} / ${total} 张...`;
-    });
+    const imageModel = settings.models.find((m) => m.id === params.image_model) || settings.currentImageModel;
+    let images;
+    if (imageModel) {
+      genProgressText.value = `正在生成 ${selectedSchemes.value.length} 张图片...`;
+      images = await aiGenerate(imageModel, selectedSchemes.value, params);
+    } else {
+      alert('未配置生图模型，将使用示例图。请在设置中添加生图模型。');
+      images = await mockGenerate(selectedSchemes.value, params, (cur, total) => {
+        genProgressText.value = `正在生成第 ${cur} / ${total} 张...`;
+      });
+    }
     appendHistory(images);
     lastGenerated.value = images;
-  } catch {
-    alert('生成失败，请重试');
+  } catch (e) {
+    const msg = e?.response?.data?.error || e?.message || '生成失败，请重试';
+    alert(msg);
   } finally {
     generating.value = false;
     genProgressText.value = '';

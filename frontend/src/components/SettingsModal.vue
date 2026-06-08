@@ -44,6 +44,7 @@
                 <input type="radio" name="image" :checked="settings.imageModelId === m.id" @change="settings.setImageModel(m.id)" />
                 <span>设为生图默认</span>
               </label>
+              <button class="edit" @click="$emit('edit-model', m)">编辑</button>
               <button class="del" @click="settings.removeModel(m.id)">删除</button>
             </div>
           </div>
@@ -82,7 +83,7 @@ import { reactive, ref } from 'vue';
 import { useSettingsStore, API_FORMATS } from '../stores/settings.js';
 import { changePassword } from '../api/auth.js';
 
-defineEmits(['close', 'open-add-model']);
+defineEmits(['close', 'open-add-model', 'edit-model']);
 
 const settings = useSettingsStore();
 const tab = ref('model');
@@ -274,6 +275,10 @@ async function submitPassword() {
 }
 .use-radio input {
   accent-color: var(--brand);
+}
+.edit {
+  color: var(--brand);
+  font-size: 12px;
 }
 .del {
   color: var(--danger);

@@ -28,8 +28,13 @@
       </div>
     </div>
 
-    <SettingsModal v-if="showSettings" @close="showSettings = false" @open-add-model="showAdd = true" />
-    <AddModelModal v-if="showAdd" @close="showAdd = false" />
+    <SettingsModal
+      v-if="showSettings"
+      @close="showSettings = false"
+      @open-add-model="openAdd()"
+      @edit-model="openAdd($event)"
+    />
+    <AddModelModal v-if="showAdd" :edit-model="editTarget" @close="closeAdd" />
   </header>
 </template>
 
@@ -44,6 +49,16 @@ const auth = useAuthStore();
 const router = useRouter();
 const showSettings = ref(false);
 const showAdd = ref(false);
+const editTarget = ref(null);
+
+function openAdd(model = null) {
+  editTarget.value = model;
+  showAdd.value = true;
+}
+function closeAdd() {
+  showAdd.value = false;
+  editTarget.value = null;
+}
 
 const items = [
   { label: '简单诊断', path: '/simple-diagnose', enabled: false },

@@ -3,21 +3,35 @@
     <div class="modal-mask" @click.self="$emit('close')">
     <div class="modal card">
       <header class="modal-head">
-        <h3>添加模型</h3>
+        <h3>{{ isEdit ? '编辑模型' : '添加模型' }}</h3>
         <button class="close" @click="$emit('close')">✕</button>
       </header>
 
       <div class="config-card">
         <div class="config-title">
-          <span class="cube">◈</span>
+          <span class="cube">◆</span>
           <span>自定义配置</span>
         </div>
+
+        <label class="field">
+          <span class="req">模型用途</span>
+          <select v-model="form.usage">
+            <option value="vision">视觉诊断（多模态，识别图片）</option>
+            <option value="image">生图（文生图 / 图生图）</option>
+          </select>
+          <p class="tip">
+            选「视觉诊断」用于上传图片做点击率诊断；选「生图」用于根据方案生成优化主图（如 gpt-image-2）。
+          </p>
+        </label>
 
         <label class="field">
           <span class="req">API 格式</span>
           <select v-model="form.apiFormat">
             <option v-for="f in API_FORMATS" :key="f.value" :value="f.value">{{ f.label }}</option>
           </select>
+          <p v-if="form.usage === 'image'" class="tip">
+            生图模型请选择「OpenAI Images 格式」，地址填写云雾 / 向量引擎的 <code>/v1</code> 地址。
+          </p>
         </label>
 
         <label class="field">
@@ -31,21 +45,13 @@
           </div>
           <input v-model.trim="form.baseUrl" type="text" placeholder="e.g. https://api.openai.com/v1" />
           <p class="tip">
-            请填写兼容 OpenAI API 的服务端点地址，不要以斜杠结尾。
-            <code>/chat/completions</code> 将会被补充到你填写的地址末尾。
+            请填写兼容 OpenAI API 的服务端点地址，不要以斜杠结尾。诊断会补全 <code>/chat/completions</code>，生图会补全 <code>/images/generations</code>。
           </p>
         </label>
 
         <label class="field">
-          <div class="field-top">
-            <span class="req">模型 ID</span>
-            <label class="switch">
-              <span class="switch-label">多模态（支持视觉诊断）</span>
-              <input type="checkbox" v-model="form.multimodal" />
-              <i class="track"><i class="thumb"></i></i>
-            </label>
-          </div>
-          <input v-model.trim="form.modelId" type="text" placeholder="输入模型 ID，如 gpt-4o / qwen-vl-max" />
+          <span class="req">模型 ID</span>
+          <input v-model.trim="form.modelId" type="text" placeholder="输入模型 ID，如 gpt-4o / qwen-vl-max / gpt-image-2" />
         </label>
 
         <label class="field">
@@ -78,7 +84,7 @@
 
       <footer class="modal-foot">
         <button class="btn-ghost" @click="$emit('close')">取消</button>
-        <button class="btn-primary" @click="submit">提交</button>
+        <button class="btn-primary" @click="submit">{{ isEdit ? '保存修改' : '提交' }}</button>
       </footer>
     </div>
     </div>
@@ -86,9 +92,12 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed, watch } from 'vue';
 import { useSettingsStore, API_FORMATS } from '../stores/settings.js';
 
+const props = defineProps({
+  editModel: { type: Object, default: null },
+});
 const emit = defineEmits(['close', 'added']);
 const settings = useSettingsStore();
 
@@ -96,15 +105,35 @@ const showKey = ref(false);
 const showAdvanced = ref(false);
 const error = ref('');
 
+const isEdit = computed(() => !!props.editModel);
+
 const form = reactive({
   apiFormat: 'openai-chat',
+  usage: 'vision',
   baseUrl: '',
   fullUrl: false,
   modelId: '',
-  multimodal: true,
   apiKey: '',
   name: '',
 });
+
+function fillFrom(m) {
+  if (!m) return;
+  form.apiFormat = m.apiFormat || 'openai-chat';
+  form.usage = m.usage === 'image' || (m.multimodal === false && m.usage !== 'vision') ? 'image' : 'vision';
+  form.baseUrl = m.baseUrl || '';
+  form.fullUrl = !!m.fullUrl;
+  form.modelId = m.modelId || '';
+  form.apiKey = m.apiKey || '';
+  form.name = m.name && m.name !== m.modelId ? m.name : '';
+  if (form.name) showAdvanced.value = true;
+}
+
+watch(
+  () => props.editModel,
+  (m) => fillFrom(m),
+  { immediate: true }
+);
 
 function submit() {
   error.value = '';
@@ -120,16 +149,21 @@ function submit() {
     error.value = '请填写 API 密钥';
     return;
   }
-  settings.addModel({
+  const payload = {
     apiFormat: form.apiFormat,
     baseUrl: form.baseUrl,
     fullUrl: form.fullUrl,
     modelId: form.modelId,
-    multimodal: form.multimodal,
+    multimodal: form.usage === 'vision',
     apiKey: form.apiKey,
     name: form.name,
-    usage: form.multimodal ? 'vision' : 'image',
-  });
+    usage: form.usage,
+  };
+  if (isEdit.value) {
+    settings.updateModel(props.editModel.id, payload);
+  } else {
+    settings.addModel(payload);
+  }
   emit('added');
   emit('close');
 }

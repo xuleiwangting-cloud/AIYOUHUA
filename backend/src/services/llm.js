@@ -134,6 +134,38 @@ async function callAnthropic({ model, systemPrompt, userPrompt, imageDataUrl }) 
   return data?.content?.map((c) => c.text || '').join('') || '';
 }
 
+function buildImageUrl(model) {
+  const base = (model.baseUrl || '').trim().replace(/\/+$/, '');
+  if (model.fullUrl) return base;
+  return `${base}/images/generations`;
+}
+
+// 调用 OpenAI Images 兼容接口（云雾 / 向量引擎等）生成图片，返回 data URL 或图片 URL
+export async function callImageModel({ model, prompt, size, n = 1 }) {
+  if (!model || !model.modelId || !model.apiKey || !model.baseUrl) {
+    throw new Error('Incomplete image model config: baseUrl, modelId and apiKey are required');
+  }
+  const body = { model: model.modelId, prompt, n };
+  if (size) body.size = size;
+  const res = await fetch(buildImageUrl(model), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${model.apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Image API ${res.status}: ${txt.slice(0, 500)}`);
+  }
+  const data = await res.json();
+  const item = data?.data?.[0] || {};
+  if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
+  if (item.url) return item.url;
+  throw new Error('Image API 未返回图片数据');
+}
+
 export async function callVisionModel({ model, systemPrompt, userPrompt, imageDataUrl }) {
   if (!model || !model.modelId || !model.apiKey || !model.baseUrl) {
     throw new Error('Incomplete model config: baseUrl, modelId and apiKey are required');

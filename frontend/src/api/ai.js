@@ -29,3 +29,18 @@ export async function aiSchemes(model, diagnosis, direction, count = 8) {
   });
   return data.schemes;
 }
+
+export async function aiGenerate(model, schemes, params) {
+  const { data } = await http.post('/ai/generate', {
+    model: toModelPayload(model),
+    schemes: schemes.map((s) => ({
+      id: s.id,
+      title: s.title,
+      image_prompt: s.image_prompt,
+      original_prompt: s.original_prompt,
+      negative_prompt: s.negative_prompt,
+    })),
+    params,
+  });
+  return data.images;
+}

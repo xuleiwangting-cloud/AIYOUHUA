@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { reactive, computed } from 'vue';
+import { reactive, computed, watch } from 'vue';
 import { STYLE_OPTIONS, RATIO_OPTIONS, QUALITY_OPTIONS } from '../api/mock.js';
 import { useSettingsStore } from '../stores/settings.js';
 
@@ -61,10 +61,24 @@ const qualityOptions = QUALITY_OPTIONS;
 
 const local = reactive({
   style: STYLE_OPTIONS[0],
-  image_model: settings.imageModelId || '',
+  image_model: settings.imageModelId || settings.imageModels[0]?.id || '',
   ratio: '1:1',
   quality: '1K',
 });
+
+// 当生图模型列表或默认模型变化时，保证选择框始终指向一个有效的可选项
+watch(
+  () => settings.imageModels.map((m) => m.id).join(','),
+  () => {
+    const ids = settings.imageModels.map((m) => m.id);
+    if (!local.image_model || !ids.includes(local.image_model)) {
+      local.image_model = settings.imageModelId && ids.includes(settings.imageModelId)
+        ? settings.imageModelId
+        : ids[0] || '';
+    }
+  },
+  { immediate: true }
+);
 
 const disabled = computed(() => props.selectedCount === 0);
 const buttonText = computed(() => {

@@ -1,6 +1,6 @@
 ﻿import { Router } from 'express';
 import { authRequired } from '../middleware/auth.js';
-import { callVisionModel, extractJson } from '../services/llm.js';
+import { callVisionModel, callImageModel, extractJson } from '../services/llm.js';
 
 const router = Router();
 router.use(authRequired);
@@ -157,6 +157,59 @@ router.post('/schemes', async (req, res) => {
   } catch (err) {
     console.error('[ai/schemes]', err.message);
     res.status(502).json({ error: `方案生成失败：${err.message}` });
+  }
+});
+
+
+// 比例 -> OpenAI Images 尺寸（gpt-image 支持 1024x1024 / 1536x1024 / 1024x1536 / auto）
+function ratioToSize(ratio) {
+  switch (ratio) {
+    case '9:16':
+    case '3:4':
+    case '4:5':
+      return '1024x1536';
+    case '16:9':
+      return '1536x1024';
+    case '1:1':
+    default:
+      return '1024x1024';
+  }
+}
+
+router.post('/generate', async (req, res) => {
+  const { model, schemes, params = {} } = req.body || {};
+  if (!model) return res.status(400).json({ error: '缺少生图模型配置，请先在设置中添加生图模型' });
+  if (!Array.isArray(schemes) || !schemes.length) return res.status(400).json({ error: '缺少待生成的方案' });
+  const size = ratioToSize(params.ratio);
+  const style = params.style ? `画面风格：${params.style}。` : '';
+  const results = [];
+  try {
+    for (const s of schemes) {
+      const prompt = [
+        style,
+        s.image_prompt || s.original_prompt || s.title || '',
+        s.negative_prompt ? `避免：${s.negative_prompt}` : '',
+      ].filter(Boolean).join('\n');
+      const url = await callImageModel({ model, prompt, size });
+      results.push({
+        id: Date.now() + results.length,
+        scheme_id: s.id,
+        scheme_title: s.title || '',
+        filename: `${s.title || 'image'}_${Date.now() + results.length}.png`,
+        url,
+        width: size === '1536x1024' ? 1536 : 1024,
+        height: size === '1024x1536' ? 1536 : 1024,
+        size_bytes: 0,
+        ratio: params.ratio || '1:1',
+        model: model.modelId,
+        quality: params.quality || '1K',
+        created_at: new Date().toISOString(),
+      });
+    }
+    res.json({ images: results });
+  } catch (err) {
+    console.error('[ai/generate]', err.message);
+    res.status(502).json({ error: `生图失败：${err.message}` });
   }
 });
 
