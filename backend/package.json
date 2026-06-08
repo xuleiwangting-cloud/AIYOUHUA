@@ -1,9 +1,12 @@
-{
+﻿{
   "name": "aiyouhua-backend",
   "version": "1.0.0",
   "description": "AI 商品主图点击率优化助手 - 后端服务",
   "type": "module",
   "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js"
